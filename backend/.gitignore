@@ -1,0 +1,15 @@
+# Environment files - API keys ko safe rakhta hai
+backend/.env
+backend/venv/
+backend/venvvenv/
+backend/__pycache__/
+backend/*.pyc
+
+# Node modules - bahut badi hoti hai
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# OS files
+.DS_Store
+Thumbs.db

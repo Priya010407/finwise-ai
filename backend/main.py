@@ -13,9 +13,7 @@ app = FastAPI(title="FinWise AI")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173",
-        "https://finwise-ai-beige.vercel.app",
-        "*"],
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -62,10 +60,6 @@ async def analyze_screenshot(
         import pytesseract
         from PIL import Image
 
-        # Set tesseract path for Windows
-        pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-
-        # Read image
         contents = await file.read()
         img = Image.open(io.BytesIO(contents))
 
@@ -73,26 +67,23 @@ async def analyze_screenshot(
         extracted_text = pytesseract.image_to_string(img)
 
         if not extracted_text.strip():
-            extracted_text = "Could not extract text from image clearly"
+            extracted_text = "Could not extract text clearly"
 
         print(f"OCR extracted: {extracted_text}")
 
-        # Send extracted text to Groq
         prompt = f"""The user uploaded a payment screenshot.
 Here is the text extracted from it via OCR:
 
 {extracted_text}
 
 Please analyze this and provide:
-1. Amount paid (look for numbers with Rs, INR, or rupee symbol)
-2. Merchant or app name (PhonePe, GPay, Paytm, Amazon, Zomato etc)
+1. Amount paid
+2. Merchant or app name
 3. Date of transaction if visible
 4. Expense category (food, transport, shopping, utilities, entertainment)
-5. A brief financial tip about this type of spending
+5. A brief financial tip
 
-User message: {message}
-
-If the OCR text is unclear, make your best guess based on what you can see."""
+User message: {message}"""
 
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -100,11 +91,11 @@ If the OCR text is unclear, make your best guess based on what you can see."""
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=600
+            max_tokens=500
         )
 
         reply = response.choices[0].message.content
         return {"response": reply, "status": "success"}
 
     except Exception as e:
-        return {"response": f"Error analyzing screenshot: {str(e)}", "status": "error"}
+        return {"response": f"Error: {str(e)}", "status": "error"}

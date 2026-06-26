@@ -93,7 +93,7 @@ export default function ChatAdvisor({ onExpenseAdded }) {
         form.append("file", file);
         form.append("message", input || "Analyze this payment screenshot");
 
-        const res = await fetch("http://127.0.0.1:8000/analyze-screenshot", {
+        const res = await fetch("https://finwise-ai-production-a273.up.railway.app/analyze-screenshot", {
           method: "POST",
           body: form,
         });
@@ -108,7 +108,7 @@ export default function ChatAdvisor({ onExpenseAdded }) {
 
       } else {
         form.append("message", input);
-        const res = await fetch("http://127.0.0.1:8000/chat", {
+        const res = await fetch("https://finwise-ai-production-a273.up.railway.app/chat", {
           method: "POST",
           body: form,
         });

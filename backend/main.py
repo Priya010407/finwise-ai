@@ -59,46 +59,81 @@ async def analyze_screenshot(
 ):
     try:
         contents = await file.read()
-        filename = file.filename.lower()
+        
+        # Convert image to base64
+        base64_image = base64.b64encode(contents).decode("utf-8")
+        
+        # Detect image type
+        content_type = file.content_type or "image/jpeg"
+        
+        # Use Groq Vision model to analyze image
+        vision_response = client.chat.completions.create(
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{content_type};base64,{base64_image}"
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": f"""You are analyzing an Indian payment screenshot.
 
-        # Guess category from filename
-        category = "general expense"
-        if any(x in filename for x in ["zomato", "swiggy", "food"]):
-            category = "food delivery"
-        elif any(x in filename for x in ["uber", "ola", "rapido"]):
-            category = "transport"
-        elif any(x in filename for x in ["amazon", "flipkart", "shopping"]):
-            category = "shopping"
-        elif any(x in filename for x in ["phone", "gpay", "paytm", "upi"]):
-            category = "UPI payment"
-        elif any(x in filename for x in ["netflix", "spotify", "hotstar"]):
-            category = "entertainment"
-
-        prompt = f"""The user uploaded a payment screenshot named '{file.filename}'.
-This appears to be a {category} transaction.
-
-Please provide:
-1. Likely amount range for this type of transaction
-2. Merchant category: {category}
-3. Expense category for budgeting
-4. 2-3 specific financial tips for this type of spending in India
-5. How this fits into a monthly budget
+Please extract and provide:
+1. Amount: Exact amount paid in rupees
+2. Merchant: Name of merchant or app
+3. Date: Transaction date if visible
+4. Payment method: UPI, credit card, debit card etc
+5. Category: Food/Transport/Shopping/Utilities/Entertainment/Investment
 
 User message: {message}
 
-Be specific and helpful even without seeing the exact image."""
-
-        response = client.chat.completions.create(
+Be specific with exact amount and merchant name visible in the image."""
+                        }
+                    ]
+                }
+            ],
+            max_tokens=500
+        )
+        
+        extracted_info = vision_response.choices[0].message.content
+        
+        # Get financial advice based on extracted info
+        advice_response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=600
-        )
+                {
+                    "role": "user",
+                    "content": f"""Based on this payment analysis:
 
-        reply = response.choices[0].message.content
-        return {"response": reply, "status": "success"}
+{extracted_info}
+
+Provide personalized Indian financial advice:
+1. Is this spending reasonable?
+2. Monthly budget recommendation for this category
+3. How to save money with Indian alternatives
+4. Investment tip with saved amount (SIP suggestion)"""
+                }
+            ],
+            max_tokens=500
+        )
+        
+        final_reply = f"""📸 Screenshot Analysis:
+
+{extracted_info}
+
+---
+
+💡 Financial Advice:
+
+{advice_response.choices[0].message.content}"""
+
+        return {"response": final_reply, "status": "success"}
 
     except Exception as e:
         return {"response": f"Error: {str(e)}", "status": "error"}

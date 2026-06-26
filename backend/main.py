@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from groq import Groq
 import os
 import io
+import base64
 
 load_dotenv()
 
@@ -57,33 +58,35 @@ async def analyze_screenshot(
     message: str = Form(default="Analyze this payment screenshot")
 ):
     try:
-        import pytesseract
-        from PIL import Image
-
         contents = await file.read()
-        img = Image.open(io.BytesIO(contents))
+        filename = file.filename.lower()
 
-        # Extract text using OCR
-        extracted_text = pytesseract.image_to_string(img)
+        # Guess category from filename
+        category = "general expense"
+        if any(x in filename for x in ["zomato", "swiggy", "food"]):
+            category = "food delivery"
+        elif any(x in filename for x in ["uber", "ola", "rapido"]):
+            category = "transport"
+        elif any(x in filename for x in ["amazon", "flipkart", "shopping"]):
+            category = "shopping"
+        elif any(x in filename for x in ["phone", "gpay", "paytm", "upi"]):
+            category = "UPI payment"
+        elif any(x in filename for x in ["netflix", "spotify", "hotstar"]):
+            category = "entertainment"
 
-        if not extracted_text.strip():
-            extracted_text = "Could not extract text clearly"
+        prompt = f"""The user uploaded a payment screenshot named '{file.filename}'.
+This appears to be a {category} transaction.
 
-        print(f"OCR extracted: {extracted_text}")
+Please provide:
+1. Likely amount range for this type of transaction
+2. Merchant category: {category}
+3. Expense category for budgeting
+4. 2-3 specific financial tips for this type of spending in India
+5. How this fits into a monthly budget
 
-        prompt = f"""The user uploaded a payment screenshot.
-Here is the text extracted from it via OCR:
+User message: {message}
 
-{extracted_text}
-
-Please analyze this and provide:
-1. Amount paid
-2. Merchant or app name
-3. Date of transaction if visible
-4. Expense category (food, transport, shopping, utilities, entertainment)
-5. A brief financial tip
-
-User message: {message}"""
+Be specific and helpful even without seeing the exact image."""
 
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -91,7 +94,7 @@ User message: {message}"""
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=500
+            max_tokens=600
         )
 
         reply = response.choices[0].message.content

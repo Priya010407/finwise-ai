@@ -2,6 +2,7 @@ import { useState } from "react";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./components/Dashboard";
 import ChatAdvisor from "./components/ChatAdvisor";
+import ExpenseUpload from "./components/ExpenseUpload";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -68,7 +69,7 @@ export default function App() {
             <ChatAdvisor onExpenseAdded={addExpense} />
           )}
           {activeTab === "upload" && (
-            <ChatAdvisor onExpenseAdded={addExpense} />
+            <ExpenseUpload onExpenseAdded={addExpense} />
           )}
         </div>
       </div>
